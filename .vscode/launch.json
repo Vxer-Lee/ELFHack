@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "debug",
+        "type": "lldb",
+        "request": "launch",
+        "args": [],
+        // 项目目录
+        "cwd": "${workspaceFolder}",
+        // 调试要启动的程序
+        "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
+        // 调试开始前要运行的任务
+        "preLaunchTask": "build c++",
+        // 程序启动后是否自动从终端跳到调试窗口
+        "internalConsoleOptions": "neverOpen",
+        // 是否在vscode内置控制台中运行
+        "console": "integratedTerminal"
+      }
+    ]
+  }

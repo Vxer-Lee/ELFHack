@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            // 和launch.json的preLaunchTask设置相同的值
+            "label": "build c++",
+            // 编译命令
+            "command": "clang++",
+            // 项目目录
+            "cwd": "${workspaceFolder}",
+
+            "args": [
+                // 设置c++标准
+                "--std=c++20",
+                // 开启调试
+                "-g",
+                // 显示所有警告
+                "-Wall",
+                // -o后面的参数表示编译后生成的程序所在目录以及程序的文件名
+                "-o",
+                "${workspaceFolder}/build/${fileBasenameNoExtension}",
+                // 最后一个参数表示当前文件的文件名
+                "${file}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
