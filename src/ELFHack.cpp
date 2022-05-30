@@ -27,7 +27,7 @@ void ReadSegmentTable32(FILE *fp)
 }
 
 /***********读取ELF文件头******************/
-void ReadELFHeader64(FILE *fp)
+void ReadELFHeader64(FILE *fp,int &offset,int &nSize,int &nCount)
 {
     Elf64_Ehdr elf64_header;
 
@@ -113,6 +113,10 @@ void ReadELFHeader64(FILE *fp)
     printf("\e[33m[-] 节的数量:0x%x(%d)\n",elf64_header.e_shnum,elf64_header.e_shnum);printf("\e[37m");
     printf("[-] 节字符串表的索引:0x%x\n",elf64_header.e_shstrndx);
     printf("\n");
+
+    offset = elf64_header.e_phoff;
+    nSize = elf64_header.e_phentsize;
+    nCount = elf64_header.e_phnum;
 }
 void ReadELFHeader32(FILE *fp)
 {
@@ -204,97 +208,151 @@ void ReadELFHeader32(FILE *fp)
 
 /***********读取程序头(文件段表)******************/
 
-void ReadProgrameHeader(FILE *fp)
+void ReadProgrameHeader(FILE *fp,int Offset,int nSize,int nCount)//段表偏移,段表大小,段表数量
 {
-    printf("\e[32m----------------------------[+]程序头(段表)-----------------------------\n");
-    Elf64_Phdr elf64_programheader;
-    fread(&elf64_programheader, sizeof(elf64_programheader), 1,fp);
-    printf("段的类型:");
-    switch (elf64_programheader.p_type) {
-        case PT_NULL:
-        {
-            break;
-        }
-        case PT_LOAD:
-        {
-            printf("该段可以被加载到内存中执行!\n");
-            break;
-        }
-        case PT_DYNAMIC:
-        {
-            break;
-        }
-        case PT_INTERP:
-        {
-            break;
-        }
-        case PT_NOTE:
-        {
-            break;
-        }
-        case PT_SHLIB:
-        {
-            break;
-        }
-        case PT_PHDR:
-        {
-            printf("段表本身");
-            break;
-        }
-        case PT_TLS:
-        {
-            break;
-        }
-        case PT_NUM:
-        {
-            break;
-        }
-        case PT_LOOS:
-        {
-            break;
-        }
-        case PT_GNU_EH_FRAME:
-        {
-            break;
-        }
-        case PT_GNU_STACK:
-        {
-            break;
-        }
-        case PT_GNU_RELRO:
-        {
-            break;
-        }
-        case PT_LOSUNW:
-             //PT_SUNWBSS:
-        {
-            break;
-        }  
-        case PT_SUNWSTACK:
-        {
-            break;
-        }  
-        case PT_HISUNW:
-             //PT_HIOS:
-        {
-            break;
-        }  
-        case PT_LOPROC:
-        {
-            break;
-        }  
-        case PT_HIPROC:
-        {
-            break;
-        }
-        printf("段的权限:");//p_flags
-        printf("段在文件中的偏移:");//offset
-        printf("段的虚拟地址:");//va
-        printf("段的物理地址:");//pa
-        printf("段的文件大小:");
-        printf("段的内存大小:");
-        printf("段的对其方式:");
-    }
+    printf("\e[32m----------------------------[+]程序头(段表)-----------------------------\n");printf("\e[37m");
+    //将文件指针移动到段表头
+    fseek(fp, SEEK_SET, Offset);
+
+    printf("大小0x%x\n",sizeof(Elf64_Phdr));
+
+     for (int i=0; i<nCount; i++) {
+         Elf64_Phdr elf64_programheader;
+         fread(&elf64_programheader, nSize, 1,fp);
+         printf("-=-=-=-=-=-=[段%d]=-=-=-=-=-=\n",i);
+         if(elf64_programheader.p_type == PT_LOAD)
+         {
+            printf("\e[33m[-] 当前段可以加载! PT_LOAD\n");printf("\e[37m");
+         }else {
+            printf("[-] 段的类型:%x\n",elf64_programheader.p_type);
+         }
+
+        // #define PF_X		(1 << 0)	/* Segment is executable */
+        // #define PF_W		(1 << 1)	/* Segment is writable */
+        // #define PF_R		(1 << 2)	/* Segment is readable */
+         printf("[-] 段权限:0x%x [0x%x,0x%x,0x%x]\n",elf64_programheader.p_flags,PF_X,PF_W,PF_R);
+         if (elf64_programheader.p_flags == PF_X) {
+             printf("\e[33m[-] 当前段可执行!\n");printf("\e[37m");
+         }else if(elf64_programheader.p_flags == PF_W)
+         {
+             printf("\e[33m[-] 当前段可写!\n");printf("\e[37m");
+         }else if(elf64_programheader.p_flags == PF_R)
+         {
+             printf("\e[33m[-] 当前段只读!\n");printf("\e[37m");
+         }else if(elf64_programheader.p_flags == (PF_X + PF_W))
+         {
+             printf("\e[33m[-] 当前段(可写)(可执行!)\n",elf64_programheader.p_flags);printf("\e[37m");
+         }else if(elf64_programheader.p_flags == (PF_X + PF_R))
+         {
+             printf("\e[33m[-] 当前段(可执行)(只读)!\n");printf("\e[37m");
+         }else if(elf64_programheader.p_flags == (PF_W+PF_R) )
+         {
+             printf("\e[33m[-] 当前段(可读可写)(不可执行!)\n");printf("\e[37m");
+         }
+         else if(elf64_programheader.p_flags == (PF_X+PF_W+PF_R) )
+         {
+             printf("\e[33m[-] 当前段(可读)(可写)(可执行!)\n");printf("\e[37m");
+         }
+         else {
+            printf("[-] 段的权限:0x%x\n",elf64_programheader.p_flags);//p_flags
+         }
+         printf("[-] 段在文件中的偏移:0x%x\n",elf64_programheader.p_offset);//offset
+         printf("\e[33m[-] 段的虚拟地址:0x%x\n",elf64_programheader.p_vaddr);printf("\e[37m");//va
+         printf("[-] 段的内存大小:0x%x\n",elf64_programheader.p_memsz);
+         printf("[-] 段的物理地址:0x%x\n",elf64_programheader.p_paddr);//pa
+         printf("[-] 段的文件大小:0x%x\n",elf64_programheader.p_filesz);
+         printf("[-] 段的对其字节:0x%x\n",elf64_programheader.p_align);
+         printf("\n");
+     }
+
+
+    // printf("段的权限:");//p_flags
+    // printf("段在文件中的偏移:");//offset
+    // printf("段的虚拟地址:");//va
+    // printf("段的物理地址:");//pa
+    // printf("段的文件大小:");
+    // printf("段的内存大小:");
+    // printf("段的对其方式:");
+    // printf("段的类型:");
+    // switch (elf64_programheader.p_type) {
+    //     case PT_NULL:
+    //     {
+    //         break;
+    //     }
+    //     case PT_LOAD:
+    //     {
+    //         printf("该段可以被加载到内存中执行!\n");
+    //         break;
+    //     }
+    //     case PT_DYNAMIC:
+    //     {
+    //         break;
+    //     }
+    //     case PT_INTERP:
+    //     {
+    //         break;
+    //     }
+    //     case PT_NOTE:
+    //     {
+    //         break;
+    //     }
+    //     case PT_SHLIB:
+    //     {
+    //         break;
+    //     }
+    //     case PT_PHDR:
+    //     {
+    //         printf("段表本身");
+    //         break;
+    //     }
+    //     case PT_TLS:
+    //     {
+    //         break;
+    //     }
+    //     case PT_NUM:
+    //     {
+    //         break;
+    //     }
+    //     case PT_LOOS:
+    //     {
+    //         break;
+    //     }
+    //     case PT_GNU_EH_FRAME:
+    //     {
+    //         break;
+    //     }
+    //     case PT_GNU_STACK:
+    //     {
+    //         break;
+    //     }
+    //     case PT_GNU_RELRO:
+    //     {
+    //         break;
+    //     }
+    //     case PT_LOSUNW:
+    //          //PT_SUNWBSS:
+    //     {
+    //         break;
+    //     }  
+    //     case PT_SUNWSTACK:
+    //     {
+    //         break;
+    //     }  
+    //     case PT_HISUNW:
+    //          //PT_HIOS:
+    //     {
+    //         break;
+    //     }  
+    //     case PT_LOPROC:
+    //     {
+    //         break;
+    //     }  
+    //     case PT_HIPROC:
+    //     {
+    //         break;
+    //     }
+
+   //}
 
     // #define	PT_NULL		0		/* Program header table entry unused */
     // #define PT_LOAD		1		/* Loadable program segment */
@@ -316,7 +374,7 @@ void ReadProgrameHeader(FILE *fp)
     // #define PT_HIOS		0x6fffffff	/* End of OS-specific */
     // #define PT_LOPROC	0x70000000	/* Start of processor-specific */
     // #define PT_HIPROC	0x7fffffff	/* End of processor-specific */
-    int nnn = 6;
+    //int nnn = 6;
 }
 /*******************************************/
 
@@ -402,8 +460,11 @@ int main(int argc,char *argv[])
     if (isELF64(fp)) {
         //64位程序
         printf("[+] 64位\n");
-        ReadELFHeader64(fp); 
-        ReadProgrameHeader(fp);
+        int nOffset ;
+        int nSize;
+        int nCount;
+        ReadELFHeader64(fp,nOffset,nSize,nCount); 
+        ReadProgrameHeader(fp,nOffset,nSize,nCount);
 
     }else {
         //32位程序
