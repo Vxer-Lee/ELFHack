@@ -8,7 +8,7 @@
 #include <string>
 #include <string.h>
 #include <map>
-#define DEBUG 
+//#define DEBUG 
 
 
 
@@ -437,7 +437,6 @@ void Read_shstrtab(FILE *fp,SectionTable64 sectable64,std::map<int,std::string> 
     //     printf("section name:%s %d\n",(*iter).c_str(),i);
     //     i++;
     // }
-    fseek(fp, SEEK_SET, SEEK_SET);
 }
 void ReadSectionTable64(FILE *fp,SectionTable64 sectable64)
 {
@@ -447,11 +446,10 @@ void ReadSectionTable64(FILE *fp,SectionTable64 sectable64)
     //std::vector<std::string> vec_shstr;
     std::map<int , std::string> map_shstr;
     Read_shstrtab(fp,sectable64,map_shstr);
-    //读取strtab 所有字符串都在这.
-    
+    fseek(fp,SEEK_SET,SEEK_SET);    
     //将文件指针移动到节表头
     fseek(fp, sectable64.Offset+sectable64.Size,SEEK_SET);
-    for (int i=1; i<sectable64.count; i++) 
+    for (int i=0; i<sectable64.count; i++) 
     {
         Elf64_Shdr elf_shdr;
         int n = sizeof(Elf64_Shdr);
@@ -519,37 +517,44 @@ void ReadSectionTable64(FILE *fp,SectionTable64 sectable64)
             }
         }
 
-        // switch (elf_shdr.sh_flags) {
-        //     case SHF_WRITE:
-        //     {
-        //         //表示该段在进程空间中可写
-        //         break;
-        //     }
-        //     case SHF_ALLOC:
-        //     {
-        //         //表示该段在进程空间中需要分配空间。
-        //         //.text .data. bss段都会有这个标志位
-        //         break;
-        //     }
-        //     case SHF_EXECINSTR:
-        //     {
-        //         //表示该段在进程空间中可以被执行，一般是指代码段.
-        //         break;
-        //     }
-        // }
-       // if(elf_shdr.sh_type == SHT_STRTAB)
-        printf("--> (%s)节信息 <--\n", map_shstr.at(elf_shdr.sh_name).c_str());
-        printf("[sh_name:%d]\n",elf_shdr.sh_name);
-        printf("[sh_type:0x%x]\n",elf_shdr.sh_type);
-        printf("[sh_flags:0x%x]\n",elf_shdr.sh_flags);
-        printf("[sh_addr:0x%x]\n",elf_shdr.sh_addr);
-        printf("[sh_offset:0x%x]\n",elf_shdr.sh_offset);
-        printf("[sh_size:0x%x]\n",elf_shdr.sh_size);
-        printf("[sh_link:0x%x]\n",elf_shdr.sh_link);
-        printf("[sh_info:0x%x]\n",elf_shdr.sh_info);
-        printf("[sh_addralign:0x%x]\n",elf_shdr.sh_addralign);
-        printf("[sh_entsize:0x%x]\n",elf_shdr.sh_entsize);
-        printf("\n");
+        if(map_shstr.count(elf_shdr.sh_name) == 1)
+        {
+            //printf("--> (%s)节信息 <--\n", map_shstr.at(elf_shdr.sh_name).c_str());
+            printf("\e[32m-----------%s节信息:----------\n", map_shstr.at(elf_shdr.sh_name).c_str());
+        }else
+        {
+            printf("\e[32m-----------.plt节信息:-----------\n");
+        }
+        printf("\e[36m*[文件中偏移]:\e[33m0x%x\n",elf_shdr.sh_offset);printf("\e[37m");
+        printf("*[文件中段大小]:0x%x(%d)\n",elf_shdr.sh_size,elf_shdr.sh_size);
+        printf("\e[36m*[内存中偏移]:\e[33m0x%x\n",elf_shdr.sh_addr);printf("\e[37m");
+        printf("\e[34m*[对其字节]:0x%x\e[37m(%d)\n",elf_shdr.sh_addralign,elf_shdr.sh_addralign);printf("\e[37m");
+        printf("[类型]:0x%x\n",elf_shdr.sh_type);
+        printf("[标志位]:0x%x\n",elf_shdr.sh_flags);
+        printf("[类型]:0x%x\n",elf_shdr.sh_type);
+        printf("[链接信息]:0x%x\n",elf_shdr.sh_link);
+        printf("[sh_info]:0x%x\n",elf_shdr.sh_info);
+        printf("[sh_entsize]:0x%x\n",elf_shdr.sh_entsize);
+        //printf("\n");
+        // printf("[sh_name:%d]\n",elf_shdr.sh_name);
+        // printf("[sh_type:0x%x]\n",elf_shdr.sh_type);
+        // printf("[sh_flags:0x%x]\n",elf_shdr.sh_flags);
+        // printf("[sh_addr:0x%x]\n",elf_shdr.sh_addr);
+        // printf("[sh_offset:0x%x]\n",elf_shdr.sh_offset);
+        // printf("[sh_size:0x%x]\n",elf_shdr.sh_size);
+        // printf("[sh_link:0x%x]\n",elf_shdr.sh_link);
+        // printf("[sh_info:0x%x]\n",elf_shdr.sh_info);
+        // printf("[sh_addralign:0x%x]\n",elf_shdr.sh_addralign);
+        // printf("[sh_entsize:0x%x]\n",elf_shdr.sh_entsize);
+        // *[内存中段大小]:0x40eaa
+        // *[内存中偏移]:0x141000
+        // *[文件中段大小]:0x1d000
+        // *[文件中偏移]:0x141000
+        // [OBJ重定位偏移]:0x0
+        // [OBJ重定位项数目]:0x0
+        // [行号表偏移]:0x0
+        // [行号表中的数目]:0x0
+        // *[标志|属性]:0xc0000040 (包含已初始化数据),(可写),(可读),
     }
     
 }
@@ -593,7 +598,7 @@ int main(int argc,char *argv[])
     #ifndef DEBUG
     const char* path = argv[1];
     #else
-    const char* path = "/home/pwn/ELFHack/build/hello";
+    const char* path = "/home/ubuntu/_work/ELFHack/build/hello";
     #endif
 
     FILE *fp = fopen(path, "rb");
