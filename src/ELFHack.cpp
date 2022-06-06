@@ -438,6 +438,50 @@ void Read_shstrtab(FILE *fp,SectionTable64 sectable64,std::map<int,std::string> 
     //     i++;
     // }
 }
+void Read_shstrtab32(FILE *fp,SectionTable32 sectable32,std::map<int,std::string> &map_shstr)
+{
+    //先读取.shstrtab节表
+    Elf32_Shdr elf_shstrtab;
+    fseek(fp, (sectable32.Offset+sectable32.Size) + ((sectable32.shindex-1)*sectable32.Size), SEEK_SET);
+    fread(&elf_shstrtab, sectable32.Size, 1, fp);
+
+    //将shstrtab节表数据放入到vector里面.
+    int nIndex = elf_shstrtab.sh_offset;
+    int nSize  = elf_shstrtab.sh_size;
+    fseek(fp, nIndex, SEEK_SET);
+    char *buf = (char*)malloc(nSize);
+    memset(buf,0,nSize);
+    fread(buf, nSize, 1, fp);
+    int i2;
+    int index=0;
+    for (int i=0; i<nSize; i++) {
+        char str[256] = {0};
+        for (int j = i+1; j<nSize ; j++) 
+        {
+            if(buf[j] == 0)
+            {
+                i2 = j;
+                break;
+            }
+        }
+        if (i==0) {
+        memcpy(str, buf+i+1, (i2-i+1));
+        index = 1;
+        }else {
+            memcpy(str, buf+i, (i2-i));
+            index = i;
+        }
+        i=i2;
+        map_shstr.insert(std::pair<int, std::string>(index,str));
+        //vec_shstr.push_back(str);
+    }
+
+    int i = 0;
+    // for (std::vector<std::string>::iterator iter=vec_shstr.begin(); iter!=vec_shstr.end(); iter++) {
+    //     printf("section name:%s %d\n",(*iter).c_str(),i);
+    //     i++;
+    // }
+}
 void ReadSectionTable64(FILE *fp,SectionTable64 sectable64)
 {
     printf("\e[32m----------------------------[+]节表(Section Table)-----------------------------\n");printf("\e[37m");
@@ -528,7 +572,7 @@ void ReadSectionTable64(FILE *fp,SectionTable64 sectable64)
         printf("\e[36m*[文件中偏移]:\e[33m0x%x\n",elf_shdr.sh_offset);printf("\e[37m");
         printf("*[文件中段大小]:0x%x(%d)\n",elf_shdr.sh_size,elf_shdr.sh_size);
         printf("\e[36m*[内存中偏移]:\e[33m0x%x\n",elf_shdr.sh_addr);printf("\e[37m");
-        printf("\e[34m*[对其字节]:0x%x\e[37m(%d)\n",elf_shdr.sh_addralign,elf_shdr.sh_addralign);printf("\e[37m");
+        printf("\e[34m*[对其字节]:0x%x\n",elf_shdr.sh_addralign);printf("\e[37m");
         printf("[类型]:0x%x\n",elf_shdr.sh_type);
         printf("[标志位]:0x%x\n",elf_shdr.sh_flags);
         printf("[类型]:0x%x\n",elf_shdr.sh_type);
@@ -561,7 +605,122 @@ void ReadSectionTable64(FILE *fp,SectionTable64 sectable64)
 
 void ReadSectionTable32(FILE *fp,SectionTable32 sectable32)
 {
+    printf("\e[32m----------------------------[+]节表(Section Table)-----------------------------\n");printf("\e[37m");
+    printf("节数量:%d\n",sectable32.count);
+    //读取shstrtab 所有节名都在这.
+    //std::vector<std::string> vec_shstr;
+    std::map<int , std::string> map_shstr;
+    Read_shstrtab32(fp,sectable32,map_shstr);
+    fseek(fp,SEEK_SET,SEEK_SET);    
+    //将文件指针移动到节表头
+    fseek(fp, sectable32.Offset+sectable32.Size,SEEK_SET);
+    for (int i=0; i<sectable32.count; i++) 
+    {
+        Elf32_Shdr elf_shdr;
+        int n = sizeof(Elf32_Shdr);
+        fread(&elf_shdr, sectable32.Size, 1, fp);
+        switch (elf_shdr.sh_type) {
+            case SHT_NULL:
+            {
+                //无效段
+                break;
+            }
+            case SHT_PROGBITS:
+            {
+                //程序段
+                break;
+            }
+            case SHT_SYMTAB:
+            {
+                //符号表
+                break;
+            }
+            case SHT_STRTAB:
+            {
+                //字符串表
+                break;
+            }
+            case SHT_RELA:
+            {
+                //重定位表
+                break;
+            }
+            case SHT_HASH:
+            {
+                //符号表的HASH表
+                break;
+            }
+            case SHT_DYNAMIC:
+            {
+                //动态链接信息
+                break;
+            }
+            case SHT_NOTE:
+            {
+                //提示性信息
+                break;
+            }
+            case SHT_NOBITS:
+            {
+                //该段在文件中没有内容
+                break;
+            }
+            case SHT_REL:
+            {
+                //重定位信息
+                break;
+            }
+            case SHT_SHLIB:
+            {
+                //保留
+                break;
+            }
+            case SHT_DYNSYM:
+            {
+                //动态链接的符号
+                break;
+            }
+        }
 
+        if(map_shstr.count(elf_shdr.sh_name) == 1)
+        {
+            //printf("--> (%s)节信息 <--\n", map_shstr.at(elf_shdr.sh_name).c_str());
+            printf("\e[32m-----------%s节信息:----------\n", map_shstr.at(elf_shdr.sh_name).c_str());
+        }else
+        {
+            printf("\e[32m-----------.plt节信息:-----------\n");
+        }
+        printf("\e[36m*[文件中偏移]:\e[33m0x%x\n",elf_shdr.sh_offset);printf("\e[37m");
+        printf("*[文件中段大小]:0x%x(%d)\n",elf_shdr.sh_size,elf_shdr.sh_size);
+        printf("\e[36m*[内存中偏移]:\e[33m0x%x\n",elf_shdr.sh_addr);printf("\e[37m");
+        printf("\e[34m*[对其字节]:0x%x\n",elf_shdr.sh_addralign);printf("\e[37m");
+        printf("[类型]:0x%x\n",elf_shdr.sh_type);
+        printf("[标志位]:0x%x\n",elf_shdr.sh_flags);
+        printf("[类型]:0x%x\n",elf_shdr.sh_type);
+        printf("[链接信息]:0x%x\n",elf_shdr.sh_link);
+        printf("[sh_info]:0x%x\n",elf_shdr.sh_info);
+        printf("[sh_entsize]:0x%x\n",elf_shdr.sh_entsize);
+        //printf("\n");
+        // printf("[sh_name:%d]\n",elf_shdr.sh_name);
+        // printf("[sh_type:0x%x]\n",elf_shdr.sh_type);
+        // printf("[sh_flags:0x%x]\n",elf_shdr.sh_flags);
+        // printf("[sh_addr:0x%x]\n",elf_shdr.sh_addr);
+        // printf("[sh_offset:0x%x]\n",elf_shdr.sh_offset);
+        // printf("[sh_size:0x%x]\n",elf_shdr.sh_size);
+        // printf("[sh_link:0x%x]\n",elf_shdr.sh_link);
+        // printf("[sh_info:0x%x]\n",elf_shdr.sh_info);
+        // printf("[sh_addralign:0x%x]\n",elf_shdr.sh_addralign);
+        // printf("[sh_entsize:0x%x]\n",elf_shdr.sh_entsize);
+        // *[内存中段大小]:0x40eaa
+        // *[内存中偏移]:0x141000
+        // *[文件中段大小]:0x1d000
+        // *[文件中偏移]:0x141000
+        // [OBJ重定位偏移]:0x0
+        // [OBJ重定位项数目]:0x0
+        // [行号表偏移]:0x0
+        // [行号表中的数目]:0x0
+        // *[标志|属性]:0xc0000040 (包含已初始化数据),(可写),(可读),
+    }
 }
 /************************************************************************************************************/
 
@@ -643,6 +802,7 @@ int main(int argc,char *argv[])
         {
             ReadProgrameHeader32(fp,nOffset,nSize,nCount);
         }
+        ReadSectionTable32(fp,sectable32);
     }
     return 0;
 }
